@@ -44,7 +44,16 @@ def get_totals_per_game():
         for segment in SEGMENTS:
             for reviewer in REVIEWERS:
                 totals[name][segment] += chari['scores'][segment].get(reviewer, 0)
+                totals[name]['all'] += chari['scores'][segment].get(reviewer, 0)
     return totals
+
+
+def get_fair_score(scores):
+    return sum([scores[segment] for segment in SEGMENTS]) / 12
+
+
+def get_lgc_score(scores):
+    return sum([scores[segment] // 3 for segment in SEGMENTS]) // 4
 
 
 grand_totals = defaultdict(int)
@@ -74,15 +83,34 @@ print(verdicts['all'] % tuple([
 ]))
 
 games_totals = get_totals_per_game()
-print(len(games_totals))
+print("%i full reviews available" % len(games_totals))
 
 verdicts = {
     'workings': "%s works flawlessly, %s is a piece of crap that barely runs."
 }
 
-for segment in SEGMENTS:
-    print("\n=== BOTTOM 10 GAMES IN %s SEGMENT ===" % segment.upper())
+for segment in SEGMENTS + ['all']:
+    print("\n=== TOP 10 GAMES IN %s SEGMENT ===" % segment.upper())
     for name in [
-        name for name in sorted(games_totals.keys(), key=(lambda key: games_totals[key][segment]))
+        name for name in reversed(sorted(games_totals.keys(), key=(lambda key: games_totals[key][segment])))
     ][:10]:
         print("{}:  {}".format(name, games_totals[name][segment]))
+
+
+score_fairness = {}
+
+for game, scores in games_totals.items():
+    fair_score = get_fair_score(scores)
+    lgc_score = get_lgc_score(scores)
+    score_fairness[game] = {
+        'fair': fair_score,
+        'lgc': lgc_score,
+        'diff': fair_score - lgc_score,
+        'game': game
+    }
+
+print("\n=== LEAST FAIRLY REVIEWED GAMES ===")
+for game in [
+    game for game in sorted(score_fairness.keys(), key=(lambda game: score_fairness[game]['diff']), reverse=True)
+][:20]:
+    print("%s -- Fair score: %0.2f; LGC: %i" % (game, score_fairness[game]['fair'], score_fairness[game]['lgc']))
