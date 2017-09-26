@@ -11,16 +11,21 @@ def iter_charis():
         charis = json.load(charis_file)
 
     for chari in charis:
+        if not chari['name']:
+            continue
         if set(chari['scores'].keys()) != set(SEGMENTS):
             continue
+        reviewers_ok = True
         for segment in chari['scores']:
             if set(chari['scores'][segment].keys()) != set(REVIEWERS):
-                continue
+                reviewers_ok = False
+                break
+        if not reviewers_ok:
+            continue
         yield chari
 
 
-def get_totals():
-
+def get_totals_per_reviewer():
     totals = {}
     for segment in SEGMENTS:
         totals[segment] = defaultdict(int)
@@ -31,8 +36,19 @@ def get_totals():
     return totals
 
 
+def get_totals_per_game():
+    totals = {}
+    for chari in iter_charis():
+        name = "{} ({})".format(chari['name'], chari['episode'])
+        totals[name] = defaultdict(int)
+        for segment in SEGMENTS:
+            for reviewer in REVIEWERS:
+                totals[name][segment] += chari['scores'][segment].get(reviewer, 0)
+    return totals
+
+
 grand_totals = defaultdict(int)
-for segment, reviews in get_totals().items():
+for segment, reviews in get_totals_per_reviewer().items():
     verdicts = {
         'workings': "%s has the best machine! %s and %s can only try to keep up!",
         'shinies': "%s appreciates the arts more than %s or %s!",
@@ -43,7 +59,7 @@ for segment, reviews in get_totals().items():
     winners = tuple([
         reviewer.capitalize()
         for reviewer in reversed(
-            sorted(reviews.iterkeys(), key=(lambda key: reviews[key]))
+            sorted(reviews.keys(), key=(lambda key: reviews[key]))
         )
     ])
     print(verdicts[segment] % winners)
@@ -53,6 +69,20 @@ for segment, reviews in get_totals().items():
 print(verdicts['all'] % tuple([
     reviewer.capitalize()
     for reviewer in reversed(
-        sorted(grand_totals.iterkeys(), key=(lambda key: reviews[key]))
+        sorted(grand_totals.keys(), key=(lambda key: grand_totals[key]))
     )
 ]))
+
+games_totals = get_totals_per_game()
+print(len(games_totals))
+
+verdicts = {
+    'workings': "%s works flawlessly, %s is a piece of crap that barely runs."
+}
+
+for segment in SEGMENTS:
+    print("\n=== BOTTOM 10 GAMES IN %s SEGMENT ===" % segment.upper())
+    for name in [
+        name for name in sorted(games_totals.keys(), key=(lambda key: games_totals[key][segment]))
+    ][:10]:
+        print("{}:  {}".format(name, games_totals[name][segment]))

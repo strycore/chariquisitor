@@ -62,11 +62,11 @@ class ChairsSpider(scrapy.Spider):
             raise ValueError("Could not find episode number in %s" % episode_title)
 
     def get_reviewer(self, text):
-        if text == 'V-':
+        if text in ('V-', 'V'):
             return 'venn'
-        elif text == 'J-':
+        elif text in ('J-', 'J'):
             return 'jordan'
-        elif text == 'P-':
+        elif text in ('P-', 'P'):
             return 'pedro'
         else:
             # TODO Deal with guests here
